@@ -1,0 +1,107 @@
+#!/usr/bin/perl -w
+use CGI qw/:standard/;
+use CGI::Pretty qw( :html3 ); 
+use TXTCOD;
+
+if(param('createcod')){
+	print header(-type=>"application/x-gzip");
+	$createcod = TXTCOD::createcod;
+	system("gzip -c ".$createcod);
+	open(CREATECOD, $createcod.".gz");
+	foreach(<CREATECOD>){
+	  	print;
+	}
+	close RES;
+  	unlink $createcod;  unlink $createcod.".gz";
+} elsif (param('togo') == 1 && (param('codeco') eq "co" || param('codeco') eq "deco")){
+    if(!param('codfile') || !param('txtfile')){
+		exit;
+    }
+    if(-e("nb.tmp")){
+    	open(NB, "nb.tmp");
+    	$tmp = <NB>;
+    	chomp($tmp);
+    	close NB;
+    	$nb = $tmp + 1;
+    	open(NB, ">nb.tmp");
+    	print NB $nb;
+    	close NB;
+    } else {
+    	open(NB, ">nb.tmp");
+    	$nb = 1;
+    	print NB $nb;
+    	close NB;
+    }
+    
+    $codfilename = param('codfile');
+    $codfilename =~ s/.*\/(.*?)/$1/;
+    open(COD, ">" . $nb . ".cod." . $codfilename);
+    $fh = upload('codfile');
+    foreach (<$fh>){
+    	print COD $_;
+    }
+    close COD;
+    
+    $txtfilename = param('txtfile');
+    $txtfilename =~ s/.*\/(.*?)/$1/;
+    open(TXT, ">" . $nb . ".txt." . $txtfilename);
+    $fh = upload('txtfile');
+    foreach (<$fh>){
+    	print TXT $_;
+    }
+    close TXT;
+    if(param('alcfile')){
+   		$alcfilename = param('alcfile');
+  		$alcfilename =~ s/.*\/(.*?)/$1/;
+	    open(ALC, ">" . $nb . ".alc." . $alcfilename);
+   	 	$fh = upload('alcfile');
+    	foreach (<$fh>){
+    		print ALC $_;
+    	}
+    	close ALC;
+    }
+        	
+    if(param('codeco') eq "co"){
+    	if (param('alcfile')){
+	    	TXTCOD::codage($nb . ".txt." . $txtfilename, $nb . ".res." . $txtfilename . ".txt", $nb . ".cod." . $codfilename,  $nb . ".alc." . $alcfilename, $txtfilename);
+	    	unlink $nb . ".alc." . $alcfilename;
+		} else {
+	    	TXTCOD::codage($nb . ".txt." . $txtfilename, $nb . ".res." . $txtfilename . ".txt", $nb . ".cod." . $codfilename, "", $txtfilename);
+		}
+		unlink $nb . ".txt." . $txtfilename; unlink $nb . ".cod." . $codfilename;
+
+		print header(-type=>"application/x-gzip");
+		system("gzip -c ".$nb . ".res." . $txtfilename . ".txt");
+		open(RES, $nb . ".res." . $txtfilename. ".txt.gz");
+		foreach(<RES>){
+		  	print;
+		}
+		close RES;
+		
+	  	unlink $nb . ".res." . $txtfilename . ".txt";  unlink $nb . ".res." . $txtfilename . ".txt.gz";
+	} elsif(param('codeco') eq "deco") {
+    	if (param('alcfile')){
+	    	$oldname = TXTCOD::decodage($nb . ".txt." . $txtfilename, $nb . ".res." . $txtfilename, $nb . ".cod." . $codfilename,  $nb . ".alc." . $alcfilename);
+	    	unlink $nb . ".alc." . $alcfilename;
+		} else {
+	    	$oldname = TXTCOD::decodage($nb . ".txt." . $txtfilename, $nb . ".res." . $txtfilename, $nb . ".cod." . $codfilename);
+		}
+		unlink $nb . ".txt." . $txtfilename; unlink $nb . ".cod." . $codfilename;
+
+		print header(-type=>"application/x-gzip");
+		system("mv ". $nb . ".res." . $txtfilename . " " . $nb . ".res." . $oldname);
+		system("gzip -c ".$nb . ".res." . $oldname);
+		open(RES, $nb . ".res." . $oldname . ".gz");
+		foreach(<RES>){
+		  	print;
+		}
+		close RES;
+		
+	  	unlink $nb . ".res." . $oldname;  unlink $nb . ".res." . $oldname . ".gz";
+	} else {
+		exit;
+	}
+}
+
+
+
